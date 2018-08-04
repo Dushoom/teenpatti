@@ -166,3 +166,24 @@ function change_contet_state(message,currentState){
 		
 	}
 }
+function post_contest_state_change(contestId,userId,loginName,previousState,currentState){
+
+	console.log(previousState+":::state:::"
+		+currentState
+		+":::contestId:::"
+		+contestId
+	)
+	if(previousState == 'OPEN' && currentState == 'JOINED'){
+
+		
+	}else if(previousState == 'JOINED' && currentState == 'STARTING'){
+
+		
+	}else if(previousState == 'STARTING' && currentState == 'PROGRESS'){
+
+		
+	}else if(previousState == 'PROGRESS' && currentState == 'CONTESTEND'){
+
+		
+	}
+}
