@@ -166,6 +166,61 @@ function change_contet_state(message,currentState){
 		
 	}
 }
+function add_contest_user(contestId,userId) {
+
+	redis_client.sadd(userId+"_myContest",contestId,(err,resp)=>{
+
+		console.log(contestId+":: added to the contest "+userId)
+	})
+	// body...
+}
+function deduct_money(contestId,userId,callback){
+
+	get_contest_templateId(contestId,(err,contestTemplateId)=>{
+
+		if(err){
+
+
+		}else{
+
+			get_contest_template_object(contestTemplateId,(err,templateDetailsObject)=>{
+
+				console.log('templateObject '+templateDetailsObject)
+				if(err){
+
+				}else{
+
+					console.log('funds')
+					params = {
+
+					'contestId':contestId,
+					'prizeType':2,
+					'userId':userId,
+					'entryFee':templateDetailsObject['entry_fee'],
+					'maxBonus':templateDetailsObject['bonus_entree_fee_percent'],
+					'channelId':1
+					}
+					
+					fmInstance.post('/fs/api/bricks/join',params)
+					.then((fmResponse) =>{
+
+						console.log(fmResponse.data)
+						callback(!fmResponse.data.error)
+					})
+					.catch((err)=>{
+
+
+						
+					})
+				}
+			})
+		}
+	})
+}
+function set_contest_user_state(contestId,userId,state){
+
+	redis_client.set([contestId+"_"+userId+"_state",state])
+}
 function post_contest_state_change(contestId,userId,loginName,previousState,currentState){
 
 	console.log(previousState+":::state:::"
