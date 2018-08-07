@@ -369,3 +369,97 @@ function chanage_contest_user_state(inputParams,currentState){
 		console.log('contest ended')
 	}
 }
+function post_contest_user_state_change(contestId,userId,loginName,previousState,currentState){
+
+	console.log(previousState+"::::::state:::::"+currentState+"::::::login_name::::"+loginName+"::::::contestId"+contestId)
+	if(previousState == null && currentState == 'Joined'){
+
+
+		message = {
+
+			'type':1,
+			'nPreminoType':99,
+			'nScoreMoveCount':40,
+			'gameId':-1,
+			'playerId':-1,
+			'score_ref':scoreRef,
+			'presetColor':{"r":46.0,"g":46.0,"b":46.0,"a":1.0},
+			'shapes':get_shapes(),
+			'pingTime':2000,
+			'sendTime':250,
+			'retryTime':1000,
+			'pingFailCount':3,
+			'nTimeToStart':3000,
+			'nBreakTime':10000,
+			'nOfGames':2,
+			'state':JSON.stringify({'type':3,'nTimeToStart':3000})
+		}
+		add_contest_user(contestId,userId)
+		increment_contest_player_count(contestId,(playerCount)=>{
+
+
+			console.log('playerCount:::contestId:::'+contestId+'::::'+playerCount)
+		})
+		initialte_contest_user_score(contestId,userId,loginName)
+		inintialize_contest_player_game_count(contestId,userId)
+		send_message_to_cs(contestId,userId,message)
+		params = {'type':102,'contestId':contestId,'userId':userId,'login_name':loginName}
+		chanage_contest_user_state(params,currentState)
+		
+
+	}else if(previousState == 'Joined' && currentState == 'Starting'){
+
+		set_start_game_timer(contestId,userId,loginName,3000,(hash)=>{
+			
+			console.log(hash)
+		})	
+	}else if(previousState == 'Starting' && currentState == 'Progress'){
+
+
+		start_game(parseInt(contestId),parseInt(userId),loginName,(err,gameId,playerId)=>{
+
+			if(!err){
+				
+				redis_client.set([contestId+"_"+userId+"_currentPlaying",gameId+":"+playerId])
+				initiate_game_player_score(gameId,playerId,contestId,gameId)
+				add_gameplayer_to_contest(contestId,userId,gameId,playerId)
+				set_end_game_timer(gameId,playerId,contestId,userId,loginName,gameDuration+bufferTime,(hash)=>{
+
+
+				})	
+			}
+		})
+		//send game start message here.
+		
+	}else if(previousState == 'Progress' && currentState =='Break'){
+
+		increment_contest_player_game_count(contestId,userId)
+		end_game(contestId,userId,loginName,()=>{
+
+			console.log('contest game ended')
+		})
+
+	}else if(previousState == 'Progress' && currentState == 'ContestEnd'){
+
+
+		end_contest(contestId,userId)
+
+	}else if(previousState == 'Break' && currentState == 'Starting'){
+
+		redis_client.get(contestId+"_"+userId+"_gameCount",(err,contestPlayerGameCount)=>{
+
+			if(contestPlayerGameCount >2){
+
+				console.log('bug in the code')
+				set_contest_user_state(contestId,userId,'ContestEnd')
+			}else{
+
+				set_start_game_timer(contestId,userId,loginName,5000,(hash)=>{
+			
+					console.log(hash)
+				})
+			}
+		})
+	}
+
+}
