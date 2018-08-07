@@ -242,3 +242,130 @@ function post_contest_state_change(contestId,userId,loginName,previousState,curr
 		
 	}
 }
+function chanage_contest_user_state(inputParams,currentState){
+
+	for(key in inputParams){
+
+		console.log(key+":::"+inputParams[key])
+	}
+	console.log('currentState:::'+currentState)
+	if(currentState == null){
+
+
+		if(inputParams.type == 1){
+
+	
+			check_basic_contest_player_checks(parseInt(JSON.parse(inputParams.contestId)),(err)=>{
+
+				console.log('contest err '+err)
+				if(!err){
+
+					deduct_money(parseInt(JSON.parse(inputParams.contestId)),inputParams.user_id,(isDeducted)=>{
+
+						console.log(isDeducted)
+						if(isDeducted){
+							
+							set_contest_user_state(parseInt(JSON.parse(inputParams.contestId)),inputParams.user_id,'Joined')
+							console.log(parseInt(JSON.parse(inputParams.contestId)),inputParams.user_id,inputParams.login_name,currentState,'Joined')
+							post_contest_user_state_change(parseInt(JSON.parse(inputParams.contestId)),inputParams.user_id,inputParams.login_name,currentState,'Joined')
+						}else{
+
+							console.log('UserId::'+inputParams.user_id+"::doesn't have required funds to join")
+						}
+					})
+				}else{
+
+					console.log('contestId '+parseInt(JSON.parse(inputParams.contestId))+' is not available wait sometime for the other contest to start' )
+				}
+
+			})
+		}else {
+
+			invalid_state(inputParams,currentState)
+			console.log('Invalid input for the currentState '+currentState)
+		}
+	}else if(currentState == 'Joined'){
+
+		if(inputParams.type == 102){
+
+			set_contest_user_state(inputParams.contestId,inputParams.userId,'Starting')
+			post_contest_user_state_change(inputParams.contestId,inputParams.userId,inputParams.login_name,currentState,'Starting')
+		}else{
+
+			invalid_state(inputParams,currentState)
+			console.log('Invalid input for the currentState '+currentState)
+		}
+	}else if(currentState == 'Starting'){
+
+		console.log(inputParams)
+		if(inputParams.type == 2 || inputParams.type == 103){
+
+			if(inputParams.type ==2){
+
+			set_contest_user_state(parseInt(JSON.parse(inputParams.contestId)),parseInt(inputParams.user_id),'Progress')
+			post_contest_user_state_change(parseInt(JSON.parse(inputParams.contestId)),parseInt(inputParams.user_id),inputParams.login_name,'Starting','Progress')
+			}else {
+
+			set_contest_user_state(inputParams.contestId,inputParams.userId,'Progress')
+			post_contest_user_state_change(inputParams.contestId,inputParams.userId,inputParams.login_name,'Starting','Progress')
+			}
+			
+			
+		}else{
+
+			invalid_state(inputParams,currentState)
+			console.log('Invalid input for the currentState '+currentState)
+		}
+	}else if(currentState == 'Progress'){
+
+		if(inputParams.type == 5 || inputParams.type == 104){
+
+			redis_client.get(inputParams.gameId+"_"+inputParams.playerId+"_contest",(err,contestId)=>{
+
+				if(err){
+
+
+
+				}else{
+
+					redis_client.get(contestId+"_"+inputParams.user_id+"_gameCount",(err,contestPlayerGameCount)=>{
+
+						console.log(contestId+"_"+inputParams.user_id+"_gameCount")
+						console.log(contestPlayerGameCount+'contestPlayerGameCount'+contestId)
+						if(parseInt(contestPlayerGameCount) >= 2 && typeof inputParams.user_id != 'undefined'){
+							set_contest_user_state(contestId,inputParams.user_id,'ContestEnd')
+							post_contest_user_state_change(contestId,inputParams.user_id,inputParams.login_name,'Progress','ContestEnd')
+						}
+						else if(typeof inputParams.user_id != 'undefined'){
+
+							set_contest_user_state(contestId,inputParams.user_id,'Break')
+							post_contest_user_state_change(contestId,inputParams.user_id,inputParams.login_name,'Progress','Break')	
+						}
+					})
+				}
+			})
+		}else{
+
+			console.log('Invalid input for the currentState '+currentState)
+			invalid_state(inputParams,currentState)
+
+		}
+	}else if(currentState == 'Break'){
+
+		if(inputParams.type == 105){
+
+			set_contest_user_state(inputParams.contestId,inputParams.userId,'Starting')
+			post_contest_user_state_change(inputParams.contestId,inputParams.userId,inputParams.login_name,currentState,'Starting')
+			
+		}else{
+
+			console.log('Invalid input for the currentState '+currentState)
+			invalid_state(inputParams,currentState)
+		}
+	}else if(currentState == 'ContestEnd'){
+
+		invalid_state(inputParams,currentState)
+
+		console.log('contest ended')
+	}
+}
